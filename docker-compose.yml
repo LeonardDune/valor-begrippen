@@ -19,7 +19,15 @@ services:
       - ./dockerfiles/databases:/fuseki/databases
       - ./dockerfiles/logs:/fuseki/logs
       - ./dockerfiles/config/skosmos.ttl:/fuseki/skosmos.ttl
-    user: 'fuseki:fuseki'
+    user: root
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fuseki.rule=Host(`fuseki.valor-ecosystem.nl`)"
+      - "traefik.http.routers.fuseki.entrypoints=websecure"
+      - "traefik.http.routers.fuseki.tls=true"
+      - "traefik.http.services.fuseki.loadbalancer.server.port=3030"      
   fuseki-cache:
     hostname: fuseki-cache
     image: varnish
@@ -42,3 +50,15 @@ services:
       - type: bind
         source: ./dockerfiles/config/config-docker-compose.ttl
         target: /var/www/html/config.ttl
+    networks:
+    - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.skosmos.rule=Host(`begrippen.valor-ecosystem.nl`)"
+      - "traefik.http.routers.skosmos.entrypoints=websecure"
+      - "traefik.http.routers.skosmos.tls.certresolver=myresolver"
+      - "traefik.http.services.skosmos.loadbalancer.server.port=80"
+
+networks:
+  web:
+    external: true
