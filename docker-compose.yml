@@ -18,7 +18,7 @@ services:
       # https://github.com/apache/jena/tree/main/jena-fuseki2/jena-fuseki-docker
       - ./dockerfiles/databases:/fuseki/databases
       - ./dockerfiles/logs:/fuseki/logs
-      - ./dockerfiles/config/skosmos.ttl:/fuseki/skosmos.ttl
+      # - ./dockerfiles/config/skosmos.ttl:/fuseki/skosmos.ttl
     user: root
     networks:
       - web
@@ -46,7 +46,7 @@ services:
       dockerfile: dockerfiles/Dockerfile.ubuntu
     ports:
       - ${SKOSMOS_PORT:-9090}:80
-    volumes:
+#    volumes:
       - type: bind
         source: ./dockerfiles/config/config-docker-compose.ttl
         target: /var/www/html/config.ttl

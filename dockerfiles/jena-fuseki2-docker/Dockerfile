@@ -103,6 +103,12 @@ RUN addgroup -g "${JENA_GID}" "${JENA_GROUP}" && \
 RUN mkdir --parents "${FUSEKI_DIR}" && \
     chown -R $JENA_USER ${FUSEKI_DIR}
 
+# Kopieer de config vanuit de context (skosmos.ttl) naar de container
+COPY skosmos.ttl ${FUSEKI_DIR}/skosmos.ttl
+
+# Zorg dat de rechten goed staan voordat we naar de fuseki-user wisselen
+RUN chown -R $JENA_USER:$JENA_GROUP ${FUSEKI_DIR}/skosmos.ttl
+
 USER $JENA_USER
 
 RUN \
