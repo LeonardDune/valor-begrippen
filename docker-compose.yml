@@ -16,8 +16,8 @@ services:
       # container. For more complete documentation about it, please
       # consult the official Apache Jena docs at
       # https://github.com/apache/jena/tree/main/jena-fuseki2/jena-fuseki-docker
-      # - ./dockerfiles/databases:/fuseki/databases
-      # - ./dockerfiles/logs:/fuseki/logs
+      - ./dockerfiles/databases:/fuseki/databases
+      - ./dockerfiles/logs:/fuseki/logs
       - ./dockerfiles/config/skosmos.ttl:/fuseki/skosmos.ttl
     user: 'fuseki:fuseki'
   fuseki-cache:
