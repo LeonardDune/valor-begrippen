@@ -24,15 +24,13 @@ services:
   # Varnish Cache voor Fuseki
   fuseki-cache:
     hostname: fuseki-cache
-    image: varnish:7-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.varnish
     container_name: valor-fuseki-cache
     restart: unless-stopped
     security_opt:
       - seccomp:unconfined
-    volumes:
-      - ./dockerfiles/config/varnish-default.vcl:/etc/varnish/default.vcl:ro
-    environment:
-      - VARNISH_CONFIG=/etc/varnish/default.vcl
     networks:
       - backend
     expose:
@@ -47,7 +45,6 @@ services:
     container_name: valor-skosmos
     restart: unless-stopped
     volumes:
-      - ./dockerfiles/config/config-docker-compose.ttl:/var/www/html/config.ttl:ro
       - skosmos-logs:/var/log/apache2
       - skosmos-apcu:/tmp/apcu
     environment:

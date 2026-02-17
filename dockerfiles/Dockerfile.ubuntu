@@ -88,8 +88,11 @@ RUN php composer.phar install --no-dev
 # install Node modules (from npm-installer stage)
 COPY --from=npm-installer /usr/src/app/node_modules /var/www/html/node_modules
 
-# Configure Skosmos
+# Configure Skosmos - use config-docker.ttl as base
 COPY dockerfiles/config/config-docker.ttl /var/www/html/config.ttl
+
+# If config-docker-compose.ttl exists, override with it
+COPY dockerfiles/config/config-docker-compose.ttl* /var/www/html/
 
 HEALTHCHECK --interval=5s --timeout=3s --retries=3 CMD curl -f http://localhost || exit 1
 
