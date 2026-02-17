@@ -16,15 +16,15 @@ services:
     volumes:
       - fuseki-data:/fuseki/databases
       - fuseki-logs:/fuseki/logs
-      - ./dockerfiles/config/skosmos.ttl:/fuseki/run/skosmos.ttl:ro
+      - ./dockerfiles/config:/config:ro
     command:
-      - "--config=/fuseki/run/skosmos.ttl"
+      - "--config=/config/skosmos.ttl"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3030/fuseki/stat"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s  # TDB2+text initzalizing takes time
+      start_period: 120s  # TDB2+text initialization takes time
     user: 'fuseki:fuseki'
     networks:
       - backend
