@@ -5,8 +5,8 @@ services:
   fuseki:
     hostname: fuseki
     build:
-      context: .
-      dockerfile: Dockerfile.fuseki
+      context: ./dockerfiles/jena-fuseki2-docker
+      dockerfile: Dockerfile
       args:
         JENA_VERSION: 5.4.0
     container_name: valor-fuseki
@@ -16,12 +16,17 @@ services:
     volumes:
       - fuseki-data:/fuseki/databases
       - fuseki-logs:/fuseki/logs
+      # Copy config from host into /tmp, then Fuseki uses it
+      - ./dockerfiles/config:/tmp/config:ro
+    # Override entrypoint to copy config and handle permissions
+    entrypoint: sh -c "cp /tmp/config/skosmos.ttl /fuseki/skosmos.ttl 2>/dev/null || true && exec /fuseki/entrypoint.sh --config=/fuseki/skosmos.ttl"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3030/fuseki/stat"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 120s
+    user: 'fuseki:fuseki'
     networks:
       - backend
     expose:
