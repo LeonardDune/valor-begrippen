@@ -1,0 +1,61 @@
+## Fuseki with Skosmos config pre-configured
+## Build from the original Fuseki Dockerfile but with config included
+
+ARG JENA_VERSION=5.4.0
+
+# Import the official Fuseki build
+FROM docker.io/eclipse-temurin:21-alpine AS base
+
+ARG JENA_VERSION
+ARG FUSEKI_DIR=/fuseki
+ARG FUSEKI_JAR=jena-fuseki-server-${JENA_VERSION}.jar
+ARG REPO=https://repo1.maven.org/maven2
+ARG JAR_URL=${REPO}/org/apache/jena/jena-fuseki-server/${JENA_VERSION}/${FUSEKI_JAR}
+
+RUN[ "${JENA_VERSION}" != "" ] || { echo -e '\n**** Set JENA_VERSION ****\n' ; exit 1 ; }
+RUN apk add --no-cache curl binutils
+
+WORKDIR $FUSEKI_DIR
+
+# Download Fuseki JAR (with checksum)
+RUN curl -fsSL "${JAR_URL}" -o "${FUSEKI_JAR}" && \
+    curl -fsSL "${JAR_URL}.asc" -o "${FUSEKI_JAR}.asc" || true
+
+# Build minimal Java  
+ARG JDEPS_EXTRA="jdk.crypto.cryptoki,jdk.crypto.ec"
+ARG JAVA_MINIMAL=/opt/java-minimal
+RUN JDEPS="$(jdeps --multi-release base --print-module-deps --ignore-missing-deps ${FUSEKI_JAR})" && \
+    jlink --compress 2 --strip-debug --no-header-files --no-man-pages \
+        --output "${JAVA_MINIMAL}" \
+        --add-modules "${JDEPS},${JDEPS_EXTRA}"
+
+# Runtime stage
+FROM alpine:3.21.2
+
+ARG JENA_VERSION
+ARG JAVA_MINIMAL=/opt/java-minimal
+ARG FUSEKI_DIR=/fuseki
+ARG FUSEKI_JAR=jena-fuseki-server-${JENA_VERSION}.jar
+
+COPY --from=base /opt/java-minimal ${JAVA_MINIMAL}
+COPY --from=base /fuseki/${FUSEKI_JAR} ${FUSEKI_DIR}/${FUSEKI_JAR}
+
+# Copy our Skosmos configuration - THIS IS THE KEY
+COPY dockerfiles/config/skosmos.ttl ${FUSEKI_DIR}/skosmos.ttl
+
+WORKDIR ${FUSEKI_DIR}
+
+RUN mkdir -p /fuseki/databases /fuseki/logs && \
+    addgroup -g 1000 fuseki && \
+    adduser -u 1000 -G fuseki -s /bin/ash -H -D fuseki && \
+    chown -R fuseki:fuseki /fuseki
+
+ENV JAVA_HOME=${JAVA_MINIMAL}
+ENV JAVA_OPTIONS="-Xmx2g -Xms1g"
+ENV FUSEKI_JAR="${FUSEKI_JAR}"
+
+EXPOSE 3030
+
+USER fuseki
+
+CMD ["sh", "-c", "exec ${JAVA_HOME}/bin/java ${JAVA_OPTIONS} -jar ${FUSEKI_DIR}/${FUSEKI_JAR} --config=${FUSEKI_DIR}/skosmos.ttl"]

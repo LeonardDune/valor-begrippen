@@ -5,8 +5,8 @@ services:
   fuseki:
     hostname: fuseki
     build:
-      context: ./dockerfiles/jena-fuseki2-docker
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.fuseki
       args:
         JENA_VERSION: 5.4.0
     container_name: valor-fuseki
@@ -16,16 +16,12 @@ services:
     volumes:
       - fuseki-data:/fuseki/databases
       - fuseki-logs:/fuseki/logs
-      - ./dockerfiles/config:/config:ro
-    command:
-      - "--config=/config/skosmos.ttl"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3030/fuseki/stat"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s  # TDB2+text initialization takes time
-    user: 'fuseki:fuseki'
+      start_period: 120s
     networks:
       - backend
     expose:
