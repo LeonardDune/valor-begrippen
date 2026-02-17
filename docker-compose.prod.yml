@@ -52,15 +52,8 @@ services:
       - MAX_UPLOAD_SIZE=100M
     networks:
       - backend
-      - frontend
     expose:
       - 80
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.skosmos.rule=Host(`${DOMAIN:-begrippen.valor-ecosystem.nl}`)"
-      - "traefik.http.routers.skosmos.entrypoints=websecure"
-      - "traefik.http.routers.skosmos.tls.certresolver=letsencrypt"
-      - "traefik.http.services.skosmos.loadbalancer.server.port=80"
 
 volumes:
   fuseki-data:
@@ -74,6 +67,4 @@ volumes:
 
 networks:
   backend:
-    driver: bridge
-  frontend:
     driver: bridge
