@@ -16,15 +16,6 @@ services:
     volumes:
       - fuseki-data:/fuseki/databases
       - fuseki-logs:/fuseki/logs
-    # NO config mounting for now - let Fuseki start fresh without config file
-    # Health check: just check if port 3030 is responding
-    healthcheck:
-      test: ["CMD", "curl", "--silent", "--fail", "http://localhost:3030/" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    user: 'fuseki:fuseki'
     networks:
       - backend
     expose:
@@ -42,18 +33,10 @@ services:
       - ./dockerfiles/config/varnish-default.vcl:/etc/varnish/default.vcl:ro
     environment:
       - VARNISH_CONFIG=/etc/varnish/default.vcl
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - backend
     expose:
       - 80
-    depends_on:
-      fuseki:
-        condition: service_healthy
 
   # Skosmos Frontend (PHP/Apache)
   skosmos:
@@ -70,20 +53,11 @@ services:
     environment:
       - PHP_MEMORY_LIMIT=512M
       - MAX_UPLOAD_SIZE=100M
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
     networks:
       - backend
       - frontend
     expose:
       - 80
-    depends_on:
-      fuseki-cache:
-        condition: service_healthy
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.skosmos.rule=Host(`${DOMAIN:-begrippen.valor-ecosystem.nl}`)"
