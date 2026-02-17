@@ -92,7 +92,7 @@ COPY --from=npm-installer /usr/src/app/node_modules /var/www/html/node_modules
 COPY dockerfiles/config/config-docker.ttl /var/www/html/config.ttl
 
 # If config-docker-compose.ttl exists, override with it
-COPY dockerfiles/config/config-docker-compose.ttl* /var/www/html/
+COPY dockerfiles/config/config-docker-compose.ttl /var/www/html/config.ttl
 
 HEALTHCHECK --interval=5s --timeout=3s --retries=3 CMD curl -f http://localhost || exit 1
 
