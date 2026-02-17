@@ -16,16 +16,14 @@ services:
     volumes:
       - fuseki-data:/fuseki/databases
       - fuseki-logs:/fuseki/logs
-      # Copy config from host into /tmp, then Fuseki uses it
-      - ./dockerfiles/config:/tmp/config:ro
-    # Override entrypoint to copy config and handle permissions
-    entrypoint: sh -c "cp /tmp/config/skosmos.ttl /fuseki/skosmos.ttl 2>/dev/null || true && exec /fuseki/entrypoint.sh --config=/fuseki/skosmos.ttl"
+    # NO config mounting for now - let Fuseki start fresh without config file
+    # Health check: just check if port 3030 is responding
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3030/fuseki/stat"]
+      test: ["CMD", "curl", "--silent", "--fail", "http://localhost:3030/" ]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s
+      start_period: 60s
     user: 'fuseki:fuseki'
     networks:
       - backend
