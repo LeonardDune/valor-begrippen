@@ -12,7 +12,7 @@ ARG FUSEKI_JAR=jena-fuseki-server-${JENA_VERSION}.jar
 ARG REPO=https://repo1.maven.org/maven2
 ARG JAR_URL=${REPO}/org/apache/jena/jena-fuseki-server/${JENA_VERSION}/${FUSEKI_JAR}
 
-RUN[ "${JENA_VERSION}" != "" ] || { echo -e '\n**** Set JENA_VERSION ****\n' ; exit 1 ; }
+RUN [ "${JENA_VERSION}" != "" ] || { echo -e '\n**** Set JENA_VERSION ****\n' ; exit 1 ; }
 RUN apk add --no-cache curl binutils
 
 WORKDIR $FUSEKI_DIR
