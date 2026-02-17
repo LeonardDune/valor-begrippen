@@ -1,0 +1,84 @@
+name: Build & Deploy with Coolify
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'dockerfiles/**'
+      - 'docker-compose.prod.yml'
+      - 'composer.json'
+      - 'package.json'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate Docker Compose
+        run: |
+          docker-compose -f docker-compose.prod.yml config
+          echo "✓ docker-compose.prod.yml is valid"
+
+      - name: Build Docker images
+        run: |
+          docker compose -f docker-compose.prod.yml build
+
+      - name: Test Skosmos image
+        run: |
+          docker compose -f docker-compose.prod.yml up -d skosmos
+          sleep 10
+          docker exec $(docker compose -f docker-compose.prod.yml ps -q skosmos) curl http://localhost || true
+          docker compose -f docker-compose.prod.yml down
+
+      - name: Test Fuseki image
+        run: |
+          docker compose -f docker-compose.prod.yml up -d fuseki
+          sleep 15
+          docker exec $(docker compose -f docker-compose.prod.yml ps -q fuseki) curl http://localhost:3030/fuseki/server || true
+          docker compose -f docker-compose.prod.yml down
+
+  coolify-webhook:
+    needs: build
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Trigger Coolify deployment
+        env:
+          COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+        run: |
+          if [ -z "$COOLIFY_WEBHOOK_URL" ]; then
+            echo "⚠️  COOLIFY_WEBHOOK_URL not set in GitHub Secrets"
+            echo "Skipping automatic Coolify deployment"
+            exit 0
+          fi
+          
+          echo "🚀 Triggering Coolify deployment..."
+          curl -X POST "$COOLIFY_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            --data "{\"ref\":\"${{ github.ref }}\",\"sha\":\"${{ github.sha }}\"}" \
+            -v
+
+  notify:
+    needs: [build, coolify-webhook]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Build status notification
+        run: |
+          if [ "${{ needs.build.result }}" = "success" ]; then
+            echo "✓ Build successful"
+            if [ "${{ needs.coolify-webhook.result }}" = "success" ]; then
+              echo "✓ Coolify deployment triggered"
+            fi
+          else
+            echo "✗ Build failed"
+          fi

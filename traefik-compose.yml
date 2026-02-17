@@ -1,0 +1,83 @@
+version: '3.8'
+
+# Optional: Use this if you need Traefik as reverse proxy on your VPS
+# This provides automatic SSL, routing, and load balancing
+# 
+# To use: docker compose -f traefik-compose.yml up -d
+
+services:
+  traefik:
+    image: traefik:v3.0-alpine
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+      - "3000:3000"  # Coolify (optional)
+    environment:
+      - TRAEFIK_API_DASHBOARD=true
+      - TRAEFIK_API_DEBUG=false
+      - TZ=UTC
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+      - ./traefik.yml:/traefik.yml:ro
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.traefik.rule: "Host(`traefik.valor-ecosystem.nl`)"
+      traefik.http.routers.traefik.entrypoints: "websecure"
+      traefik.http.routers.traefik.service: "api@internal"
+      traefik.http.routers.traefik.tls.certresolver: "letsencrypt"
+      traefik.http.routers.traefik.middlewares: "auth-traefik"
+      traefik.http.middlewares.auth-traefik.basicauth.users: "admin:$$apr1$$qgqz8lGl$$vB9XjVf/OU8vJMaMlO6I5/"  # admin:admin (CHANGE THIS!)
+      traefik.http.middlewares.redirect-https.redirectscheme.scheme: "https"
+      traefik.http.routers.traefik-redirect.rule: "Host(`traefik.valor-ecosystem.nl`)"
+      traefik.http.routers.traefik-redirect.entrypoints: "web"
+      traefik.http.routers.traefik-redirect.middlewares: "redirect-https"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Use if you want Coolify to auto-update services
+  # Coolify monitors git repos and redeploys on changes
+  coolify:
+    image: coollabs/coolify:latest
+    container_name: coolify
+    restart: unless-stopped
+    networks:
+      - frontend
+      - backend
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - coolify-data:/data
+    environment:
+      - COOLIFY_PORT=3000
+      - DATABASE_URL=sqlite:///data/coolify.db
+      - COOLIFY_DOMAIN=coolify.valor-ecosystem.nl
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.coolify.rule: "Host(`coolify.valor-ecosystem.nl`)"
+      traefik.http.routers.coolify.entrypoints: "websecure"
+      traefik.http.routers.coolify.tls.certresolver: "letsencrypt"
+      traefik.http.services.coolify.loadbalancer.server.port: "3000"
+
+volumes:
+  letsencrypt:
+    driver: local
+  coolify-data:
+    driver: local
+
+networks:
+  frontend:
+    driver: bridge
+    external: true
+  backend:
+    driver: bridge

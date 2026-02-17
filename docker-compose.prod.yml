@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # Apache Jena Fuseki Triple Store
+  fuseki:
+    hostname: fuseki
+    build:
+      context: ./dockerfiles/jena-fuseki2-docker
+      dockerfile: Dockerfile
+      args:
+        JENA_VERSION: 5.4.0
+    container_name: valor-fuseki
+    restart: unless-stopped
+    environment:
+      - JAVA_OPTIONS=-Xmx2g -Xms1g
+    volumes:
+      - fuseki-data:/fuseki/databases
+      - fuseki-logs:/fuseki/logs
+      - ./dockerfiles/config/skosmos.ttl:/fuseki/skosmos.ttl:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3030/fuseki/server"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    user: 'fuseki:fuseki'
+    networks:
+      - backend
+    expose:
+      - 3030
+
+  # Varnish Cache voor Fuseki
+  fuseki-cache:
+    hostname: fuseki-cache
+    image: varnish:7-alpine
+    container_name: valor-fuseki-cache
+    restart: unless-stopped
+    security_opt:
+      - seccomp:unconfined
+    volumes:
+      - ./dockerfiles/config/varnish-default.vcl:/etc/varnish/default.vcl:ro
+    environment:
+      - VARNISH_CONFIG=/etc/varnish/default.vcl
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+    expose:
+      - 80
+    depends_on:
+      fuseki:
+        condition: service_healthy
+
+  # Skosmos Frontend (PHP/Apache)
+  skosmos:
+    hostname: skosmos
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.ubuntu
+    container_name: valor-skosmos
+    restart: unless-stopped
+    volumes:
+      - ./dockerfiles/config/config-docker-compose.ttl:/var/www/html/config.ttl:ro
+      - skosmos-logs:/var/log/apache2
+      - skosmos-apcu:/tmp/apcu
+    environment:
+      - PHP_MEMORY_LIMIT=512M
+      - MAX_UPLOAD_SIZE=100M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - backend
+      - frontend
+    expose:
+      - 80
+    depends_on:
+      fuseki-cache:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.skosmos.rule=Host(`${DOMAIN:-begrippen.valor-ecosystem.nl}`)"
+      - "traefik.http.routers.skosmos.entrypoints=websecure"
+      - "traefik.http.routers.skosmos.tls.certresolver=letsencrypt"
+      - "traefik.http.services.skosmos.loadbalancer.server.port=80"
+
+volumes:
+  fuseki-data:
+    driver: local
+  fuseki-logs:
+    driver: local
+  skosmos-logs:
+    driver: local
+  skosmos-apcu:
+    driver: local
+
+networks:
+  backend:
+    driver: bridge
+  frontend:
+    driver: bridge
+    external: true
