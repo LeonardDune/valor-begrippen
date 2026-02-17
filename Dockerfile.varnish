@@ -4,4 +4,4 @@ COPY dockerfiles/config/varnish-default.vcl /etc/varnish/default.vcl
 
 EXPOSE 80
 
-CMD ["varnishd", "-f", "/etc/varnish/default.vcl", "-a", "0.0.0.0:80", "-T", "localhost:6082", "-s", "malloc,256m"]
+CMD ["varnishd", "-F", "-f", "/etc/varnish/default.vcl", "-a", "0.0.0.0:80", "-T", "localhost:6082", "-s", "malloc,256m"]

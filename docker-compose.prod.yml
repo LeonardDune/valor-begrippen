@@ -77,4 +77,3 @@ networks:
     driver: bridge
   frontend:
     driver: bridge
-    external: true
